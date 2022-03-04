@@ -7,7 +7,10 @@ class Telebirr:
     api = "http://196.188.120.3:10443/service-openup/toTradeWebPay"
 
     def __init__(self, app_id, app_key, public_key, notify_url, receive_name, return_url, short_code, subject,
-                 timeout_express, total_amount, nonce, out_trade_no):
+                 timeout_express, total_amount, nonce, out_trade_no,
+                 api="http://196.188.120.3:10443/service-openup/toTradeWebPay"):
+
+        self.api = api
         self.app_id = app_id
         ussd = {
             "appId": self.app_id,
