@@ -1,10 +1,13 @@
 Metadata-Version: 2.1
 Name: telebirr
-Version: 0.0.5
+Version: 0.0.6
 Summary: Telebirr integration
+Home-page: UNKNOWN
 Author: Eba Alemayehu
 Author-email: <ebaalemayhu3@gmail.com>
+License: UNKNOWN
 Keywords: python,telebirr,payment,ethiopia,ethio telecom
+Platform: UNKNOWN
 Classifier: Development Status :: 1 - Planning
 Classifier: Intended Audience :: Developers
 Classifier: Programming Language :: Python :: 3
@@ -101,3 +104,4 @@ payload = "Payload coming from telebirr" // If you are using django it means req
 decrypted_data = Telebirr.decrypt(public_key=public_key, payload=payload)
 // Do what every you need to do with your data eg: update your order status
 ``` 
+
