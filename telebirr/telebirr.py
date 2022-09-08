@@ -2,6 +2,11 @@ import datetime, json, requests, base64, collections, hashlib, re
 from Crypto.PublicKey import RSA
 from Crypto.Cipher import PKCS1_v1_5
 
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.asymmetric.rsa import RSAPublicKey
+from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives.serialization import load_der_public_key
+from cryptography.hazmat.primitives.asymmetric.padding import PKCS1v15
 
 class Telebirr:
     api = "http://196.188.120.3:10443/service-openup/toTradeWebPay"
@@ -33,7 +38,6 @@ class Telebirr:
         public_key = '-----BEGIN CERTIFICATE-----\n{}\n-----END CERTIFICATE-----'.format(public_key)
         ussd_json = json.dumps(ussd)
         encrypt = Telebirr.encrypt(public_key=public_key, msg=ussd_json)
-        print(encrypt)
         return encrypt
 
     @staticmethod
@@ -70,3 +74,20 @@ class Telebirr:
     def send_request(self):
         response = requests.post(url=self.api, json=self.request_params())
         return json.loads(response.text)
+
+
+    @staticmethod
+    def decrypt(public_key, payload):
+        public_key = re.sub("(.{64})", "\\1\n", public_key.replace("\n", ""), 0, re.DOTALL)
+        public_key = '-----BEGIN PUBLIC KEY-----\n{}\n-----END PUBLIC KEY-----\n'.format(public_key)
+        b64data = '\n'.join(public_key.splitlines()[1:-1])
+        key = load_der_public_key(base64.b64decode(b64data), default_backend())
+
+        signature = base64.b64decode(payload)
+        decrypted = b''
+        for i in range(0, len(signature), 256):
+            partial = key.recover_data_from_signature(
+                signature[i:i + 256 if i + 256 < len(signature) else len(signature)], PKCS1v15(), None)
+            decrypted += partial
+
+        return json.loads(decrypted)

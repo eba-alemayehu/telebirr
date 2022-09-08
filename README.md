@@ -71,3 +71,17 @@ telebirr = Telebirr(
 response = telebirr.send_request()
 ``` 
 
+## Decryption
+
+After the payment is successfully completed telebirr will send you notification through the notification url 
+you have set on payment request. Here is how you can decrypt the payload coming from telebirr.
+
+
+```python
+from telebirr import Telebirr
+public_key = "YOUR PUBLIC KEY FORM TELEBIRR ADMIN"
+payload = "Payload coming from telebirr" // If you are using django it means request.body
+
+decrypted_data = Telebirr.decrypt(public_key=public_key, payload=payload)
+// Do what every you need to do with your data eg: update your order status
+``` 

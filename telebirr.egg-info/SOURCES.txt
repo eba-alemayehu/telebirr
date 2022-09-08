@@ -1,0 +1,9 @@
+README.md
+setup.py
+telebirr/__init__.py
+telebirr/telebirr.py
+telebirr.egg-info/PKG-INFO
+telebirr.egg-info/SOURCES.txt
+telebirr.egg-info/dependency_links.txt
+telebirr.egg-info/requires.txt
+telebirr.egg-info/top_level.txt
