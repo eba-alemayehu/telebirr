@@ -1,4 +1,4 @@
-import datetime, json, requests, base64, collections, hashlib, re
+import datetime, json, requests, base64, hashlib, re, time
 from Crypto.PublicKey import RSA
 from Crypto.Cipher import PKCS1_v1_5
 
@@ -7,6 +7,8 @@ from cryptography.hazmat.primitives.asymmetric.rsa import RSAPublicKey
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives.serialization import load_der_public_key
 from cryptography.hazmat.primitives.asymmetric.padding import PKCS1v15
+
+from . import utils
 
 class Telebirr:
     api = "http://196.188.120.3:10443/service-openup/toTradeWebPay"
@@ -54,14 +56,7 @@ class Telebirr:
     def __sign(ussd, app_key):
         ussd_for_string_a = ussd.copy()
         ussd_for_string_a["appKey"] = app_key
-        ordered_items = collections.OrderedDict(sorted(ussd_for_string_a.items()))
-        string_a = ''
-        for key, value in ordered_items.items():
-            if string_a == '':
-                string_a = key + '=' + value
-            else:
-                string_a += '&' + key + '=' + value
-        string_b = hashlib.sha256(str.encode(string_a)).hexdigest()
+        string_b = utils.sign_sha256(ussd_for_string_a)
         return str(string_b).upper()
 
     def request_params(self):
@@ -91,3 +86,109 @@ class Telebirr:
             decrypted += partial
 
         return json.loads(decrypted)
+
+
+
+class TelebirrSuperApp:
+    def __init__(self, short_code, app_key, app_secret, merchant_id, private_key, url):
+        self.short_code = short_code
+        self.app_key = app_key
+        self.app_secret = app_secret
+        self.merchant_id = merchant_id
+        self.private_key = private_key
+        self.url = url
+
+
+    def apply_fabric_token(self):
+        response = requests.post(url=self.url+"/apiaccess/payment/gateway/payment/v1/token", headers={"X-App-key": self.app_key}, json={"appSecret": self.app_secret}, verify=False)
+        return json.loads(response.content)
+
+    def request_create_order(self, nonce_str, amount, notify_url, redirect_url, merch_order_id, timeout_express, title, business_type, payee_identifier_type):
+        fabric_token = self.apply_fabric_token()
+        url = self.url+"/apiaccess/payment/gateway/payment/v1/merchant/preOrder"
+
+        payload = {
+                "nonce_str": nonce_str,
+                "biz_content": {
+                     "notify_url": notify_url,
+                     "redirect_url": redirect_url,
+                     "trans_currency": "ETB",
+                     "total_amount": amount,
+                     "merch_order_id": merch_order_id,
+                     "appid": self.merchant_id,
+                     "merch_code": self.short_code,
+                     "timeout_express": timeout_express,
+                     "trade_type": "InApp",
+                     "title": title,
+                     "business_type": business_type,
+                     "payee_identifier": self.short_code,
+                     "payee_identifier_type": payee_identifier_type,
+                     "payee_type": "5000"
+                 },
+                 "method": "payment.preorder",
+                 "version": "1.0",
+                 "sign_type": "SHA256WithRSA",
+                 "timestamp": "{}".format(int(time.time()))
+            }
+        signature = utils.sign(payload, self.private_key)
+        payload['sign'] = signature
+        print(payload)
+        response = requests.post(
+            url= url,
+            headers={
+                "X-App-key": self.app_key,
+                "Authorization": fabric_token.get("token")
+            },
+            json=payload,
+            verify=False
+        )
+        return json.loads(response.content)
+
+    def queryOrder(self, nonce_str, sign, merch_order_id, version="1.0", method="payment.queryorder", sign_type="SHA256WithRSA"):
+        fabric_token = self.apply_fabric_token()
+
+        response = requests.post(
+            url=self.url,
+            headers={
+                "X-App-key": self.app_key,
+                "Authorization": fabric_token.get("token")
+            },
+            json={
+                 "timestamp": "{}".format(time.time()),
+                 "nonce_str": nonce_str,
+                 "method": method,
+                 "sign_type": sign_type,
+                 "sign": sign,
+                "version": version,
+                "biz_content": {
+                    "appid": self.merchant_id,
+                    "merch_code": self.short_code,
+                    "merch_order_id": merch_order_id
+                }
+            }, verify=False
+        )
+        return json.loads(response.content)
+
+    @staticmethod
+    def __sign(data, private_key):
+        excludeFields = [
+            "sign",
+            "sign_type",
+            "header",
+            "refund_info",
+            "openType",
+            "raw_request",
+            "biz_cont"]
+        to_sign_data = data.copy()
+        flat_signa_data = {}
+        for key, value in to_sign_data.items():
+            if isinstance(value, dict):
+                for k, v in value.items():
+                    if k not in excludeFields:
+                        flat_signa_data[k] = v
+            else:
+                if key not in excludeFields:
+                    flat_signa_data[key] = value
+        string_b = utils.sign_sha256(flat_signa_data, private_key)
+        return string_b
+
