@@ -1,4 +1,4 @@
-import datetime, json, requests, base64, hashlib, re, time
+import datetime, json, requests, base64, hashlib, re, time, uuid
 from Crypto.PublicKey import RSA
 from Crypto.Cipher import PKCS1_v1_5
 
@@ -101,6 +101,37 @@ class TelebirrSuperApp:
 
     def apply_fabric_token(self):
         response = requests.post(url=self.url+"/apiaccess/payment/gateway/payment/v1/token", headers={"X-App-key": self.app_key}, json={"appSecret": self.app_secret}, verify=False)
+        return json.loads(response.content)
+
+    def auth(self, token):
+        fabric_token = self.apply_fabric_token()
+        url = self.url + "/apiaccess/payment/gateway/payment/v1/auth/authToken"
+
+        payload = {
+            "timestamp": "{}".format(int(time.time())),
+            "method": "payment.authtoken",
+            "nonce_str": str(uuid.uuid4().hex),
+            "biz_content": {
+                access_token: token,
+                trade_type: "InApp",
+                appid: self.merchant_id,
+                resource_type: "OpenId",
+            },
+            "version": "1.0",
+            "sign_type": "SHA256WithRSA",
+        }
+        signature = utils.sign(payload, self.private_key)
+        payload['sign'] = signature
+
+        response = requests.post(
+            url=url,
+            headers={
+                "X-App-key": self.app_key,
+                "Authorization": fabric_token.get("token")
+            },
+            json=payload,
+            verify=False
+        )
         return json.loads(response.content)
 
     def request_create_order(self, nonce_str, amount, notify_url, redirect_url, merch_order_id, timeout_express, title, business_type, payee_identifier_type):
