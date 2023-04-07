@@ -174,13 +174,13 @@ class TelebirrSuperApp:
             verify=False
         )
         payload = {
-                "appid": self.merchant_id,
-                "merch_code": payment_order.id,
-                "nonce_str": payment_order_request.request_id,
-                "prepay_id": order_response.get('biz_content').get('prepay_id'),
-                "timestamp": timestamp,
-                "sign_type": order_response.get('sign_type')
-            }
+            "appid": self.merchant_id,
+            "merch_code": merch_order_id,
+            "nonce_str": nonce_str,
+            "prepay_id": order_response.get('biz_content').get('prepay_id'),
+            "timestamp": timestamp,
+            "sign_type": order_response.get('sign_type')
+        }
         pay_signature = utils.sign(payload, self.private_key)
         payload["sign"] = pay_signature
         return json.loads(response.content), signed_payload
