@@ -185,7 +185,7 @@ class TelebirrSuperApp:
         }
         pay_signature = utils.sign(payload, self.private_key)
         payload["sign"] = pay_signature
-        return response, signed_payload
+        return response, payload
 
     def queryOrder(self, nonce_str, sign, merch_order_id, version="1.0", method="payment.queryorder", sign_type="SHA256WithRSA"):
         fabric_token = self.apply_fabric_token()
