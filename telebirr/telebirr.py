@@ -138,6 +138,7 @@ class TelebirrSuperApp:
         fabric_token = self.apply_fabric_token()
         url = self.url+"/apiaccess/payment/gateway/payment/v1/merchant/preOrder"
         SIGN_TYPE = "SHA256WithRSA"
+        timestamp = "{}".format(int(time.time()))
         payload = {
                 "nonce_str": nonce_str,
                 "biz_content": {
@@ -159,7 +160,7 @@ class TelebirrSuperApp:
                  "method": "payment.preorder",
                  "version": "1.0",
                  "sign_type": SIGN_TYPE,
-                 "timestamp": "{}".format(int(time.time()))
+                 "timestamp": timestamp
             }
         signature = utils.sign(payload, self.private_key)
         payload['sign'] = signature
