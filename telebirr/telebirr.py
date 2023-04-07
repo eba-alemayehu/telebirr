@@ -137,7 +137,7 @@ class TelebirrSuperApp:
     def request_create_order(self, nonce_str, amount, notify_url, redirect_url, merch_order_id, timeout_express, title, business_type, payee_identifier_type):
         fabric_token = self.apply_fabric_token()
         url = self.url+"/apiaccess/payment/gateway/payment/v1/merchant/preOrder"
-
+        SIGN_TYPE = "SHA256WithRSA"
         payload = {
                 "nonce_str": nonce_str,
                 "biz_content": {
@@ -158,7 +158,7 @@ class TelebirrSuperApp:
                  },
                  "method": "payment.preorder",
                  "version": "1.0",
-                 "sign_type": "SHA256WithRSA",
+                 "sign_type": SIGN_TYPE,
                  "timestamp": "{}".format(int(time.time()))
             }
         signature = utils.sign(payload, self.private_key)
@@ -177,9 +177,9 @@ class TelebirrSuperApp:
             "appid": self.merchant_id,
             "merch_code": merch_order_id,
             "nonce_str": nonce_str,
-            "prepay_id": order_response.get('biz_content').get('prepay_id'),
+            "prepay_id": response.get('biz_content').get('prepay_id'),
             "timestamp": timestamp,
-            "sign_type": order_response.get('sign_type')
+            "sign_type": SIGN_TYPE
         }
         pay_signature = utils.sign(payload, self.private_key)
         payload["sign"] = pay_signature
