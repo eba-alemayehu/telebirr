@@ -173,6 +173,7 @@ class TelebirrSuperApp:
             json=payload,
             verify=False
         )
+        response = json.loads(response.content)
         payload = {
             "appid": self.merchant_id,
             "merch_code": merch_order_id,
@@ -183,7 +184,7 @@ class TelebirrSuperApp:
         }
         pay_signature = utils.sign(payload, self.private_key)
         payload["sign"] = pay_signature
-        return json.loads(response.content), signed_payload
+        return response, signed_payload
 
     def queryOrder(self, nonce_str, sign, merch_order_id, version="1.0", method="payment.queryorder", sign_type="SHA256WithRSA"):
         fabric_token = self.apply_fabric_token()
