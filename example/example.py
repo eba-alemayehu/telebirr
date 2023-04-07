@@ -14,17 +14,7 @@ def main():
     order_id = random.randint(99999, 1000000)
     nonce_str = str(uuid.uuid4().hex)
 
-    response = t.request_create_order(
-        nonce_str = nonce_str,
-        amount = '1',
-        notify_url="https://guzo.et",
-        redirect_url="https://guzo.et",
-        merch_order_id="{}".format(order_id),
-        timeout_express="10m",
-        title="Hello",
-        business_type="BuyGoods",
-        payee_identifier_type="04"
-    )
+    response = t.auth('InApp:e0d4dc0978b4eaaba17d2f99aea93a36fbe4a4e5fed9c075')
     print(response)
 
 if __name__ == "__main__":

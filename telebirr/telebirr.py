@@ -112,10 +112,10 @@ class TelebirrSuperApp:
             "method": "payment.authtoken",
             "nonce_str": str(uuid.uuid4().hex),
             "biz_content": {
-                access_token: token,
-                trade_type: "InApp",
-                appid: self.merchant_id,
-                resource_type: "OpenId",
+                "access_token": token,
+                "trade_type": "InApp",
+                "appid": self.merchant_id,
+                "resource_type": "OpenId",
             },
             "version": "1.0",
             "sign_type": "SHA256WithRSA",
@@ -177,7 +177,7 @@ class TelebirrSuperApp:
         response = json.loads(response.content)
         payload = {
             "appid": self.merchant_id,
-            "merch_code": merch_order_id,
+            "merch_code": self.short_code,
             "nonce_str": nonce_str,
             "prepay_id": response.get('biz_content').get('prepay_id'),
             "timestamp": timestamp,
