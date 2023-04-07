@@ -174,7 +174,7 @@ class TelebirrSuperApp:
             verify=False
         )
         payload = {
-                "appid": settings.TELEBIRR_SUPPER_APP_MERCHANT_ID,
+                "appid": self.merchant_id,
                 "merch_code": payment_order.id,
                 "nonce_str": payment_order_request.request_id,
                 "prepay_id": order_response.get('biz_content').get('prepay_id'),
