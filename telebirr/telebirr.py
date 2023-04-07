@@ -173,7 +173,17 @@ class TelebirrSuperApp:
             json=payload,
             verify=False
         )
-        return json.loads(response.content)
+        payload = {
+                "appid": settings.TELEBIRR_SUPPER_APP_MERCHANT_ID,
+                "merch_code": payment_order.id,
+                "nonce_str": payment_order_request.request_id,
+                "prepay_id": order_response.get('biz_content').get('prepay_id'),
+                "timestamp": timestamp,
+                "sign_type": order_response.get('sign_type')
+            }
+        pay_signature = utils.sign(payload, self.private_key)
+        payload["sign"] = pay_signature
+        return json.loads(response.content), signed_payload
 
     def queryOrder(self, nonce_str, sign, merch_order_id, version="1.0", method="payment.queryorder", sign_type="SHA256WithRSA"):
         fabric_token = self.apply_fabric_token()
