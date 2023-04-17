@@ -14,7 +14,7 @@ def main():
     order_id = random.randint(99999, 1000000)
     nonce_str = str(uuid.uuid4().hex)
 
-    response = t.auth('InApp:e0d4dc0978b4eaaba17d2f99aea93a36fbe4a4e5fed9c075')
+    response = t.queryOrder(nonce_str="WMq7gobZNJL37BUKwGg8xC", merch_order_id='37002')
     print(response)
 
 if __name__ == "__main__":

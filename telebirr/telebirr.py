@@ -10,6 +10,7 @@ from cryptography.hazmat.primitives.asymmetric.padding import PKCS1v15
 
 from . import utils
 
+
 class Telebirr:
     api = "http://196.188.120.3:10443/service-openup/toTradeWebPay"
 
@@ -70,7 +71,6 @@ class Telebirr:
         response = requests.post(url=self.api, json=self.request_params())
         return json.loads(response.text)
 
-
     @staticmethod
     def decrypt(public_key, payload):
         public_key = re.sub("(.{64})", "\\1\n", public_key.replace("\n", ""), 0, re.DOTALL)
@@ -88,7 +88,6 @@ class Telebirr:
         return json.loads(decrypted)
 
 
-
 class TelebirrSuperApp:
     def __init__(self, short_code, app_key, app_secret, merchant_id, private_key, url):
         self.short_code = short_code
@@ -98,9 +97,9 @@ class TelebirrSuperApp:
         self.private_key = private_key
         self.url = url
 
-
     def apply_fabric_token(self):
-        response = requests.post(url=self.url+"/apiaccess/payment/gateway/payment/v1/token", headers={"X-App-key": self.app_key}, json={"appSecret": self.app_secret}, verify=False)
+        response = requests.post(url=self.url + "/apiaccess/payment/gateway/payment/v1/token",
+                                 headers={"X-App-key": self.app_key}, json={"appSecret": self.app_secret}, verify=False)
         return json.loads(response.content)
 
     def auth(self, token):
@@ -134,39 +133,40 @@ class TelebirrSuperApp:
         )
         return json.loads(response.content)
 
-    def request_create_order(self, nonce_str, amount, notify_url, redirect_url, merch_order_id, timeout_express, title, business_type, payee_identifier_type):
+    def request_create_order(self, nonce_str, amount, notify_url, redirect_url, merch_order_id, timeout_express, title,
+                             business_type, payee_identifier_type):
         fabric_token = self.apply_fabric_token()
-        url = self.url+"/apiaccess/payment/gateway/payment/v1/merchant/preOrder"
+        url = self.url + "/apiaccess/payment/gateway/payment/v1/merchant/preOrder"
         SIGN_TYPE = "SHA256WithRSA"
         timestamp = "{}".format(int(time.time()))
         payload = {
-                "nonce_str": nonce_str,
-                "biz_content": {
-                     "notify_url": notify_url,
-                     "redirect_url": redirect_url,
-                     "trans_currency": "ETB",
-                     "total_amount": amount,
-                     "merch_order_id": merch_order_id,
-                     "appid": self.merchant_id,
-                     "merch_code": self.short_code,
-                     "timeout_express": timeout_express,
-                     "trade_type": "InApp",
-                     "title": title,
-                     "business_type": business_type,
-                     "payee_identifier": self.short_code,
-                     "payee_identifier_type": payee_identifier_type,
-                     "payee_type": "5000"
-                 },
-                 "method": "payment.preorder",
-                 "version": "1.0",
-                 "sign_type": SIGN_TYPE,
-                 "timestamp": timestamp
-            }
+            "nonce_str": nonce_str,
+            "biz_content": {
+                "notify_url": notify_url,
+                "redirect_url": redirect_url,
+                "trans_currency": "ETB",
+                "total_amount": amount,
+                "merch_order_id": merch_order_id,
+                "appid": self.merchant_id,
+                "merch_code": self.short_code,
+                "timeout_express": timeout_express,
+                "trade_type": "InApp",
+                "title": title,
+                "business_type": business_type,
+                "payee_identifier": self.short_code,
+                "payee_identifier_type": payee_identifier_type,
+                "payee_type": "5000"
+            },
+            "method": "payment.preorder",
+            "version": "1.0",
+            "sign_type": SIGN_TYPE,
+            "timestamp": timestamp
+        }
         signature = utils.sign(payload, self.private_key)
         payload['sign'] = signature
         print(payload)
         response = requests.post(
-            url= url,
+            url=url,
             headers={
                 "X-App-key": self.app_key,
                 "Authorization": fabric_token.get("token")
@@ -187,29 +187,38 @@ class TelebirrSuperApp:
         payload["sign"] = pay_signature
         return response, payload
 
-    def queryOrder(self, nonce_str, sign, merch_order_id, version="1.0", method="payment.queryorder", sign_type="SHA256WithRSA"):
+    def queryOrder(self, nonce_str, merch_order_id, version="1.0", method="payment.queryorder",
+                   sign_type="SHA256WithRSA"):
         fabric_token = self.apply_fabric_token()
 
+        url = self.url + "/apiaccess/payment/gateway/payment/v1/merchant/queryOrder"
+        payload = {
+            "timestamp": "{}".format(int(time.time())),
+            "nonce_str": nonce_str,
+            "method": "payment.queryorder",
+            "sign_type": sign_type,
+            "version": version,
+            "biz_content": {
+                "appid": self.merchant_id,
+                "merch_code": self.short_code,
+                "merch_order_id": merch_order_id
+            }
+        }
+        print(payload)
+        print(url)
+        pay_signature = utils.sign(payload, self.private_key)
+        payload["sign"] = pay_signature
+        print(payload)
         response = requests.post(
-            url=self.url,
+            url=url,
             headers={
                 "X-App-key": self.app_key,
                 "Authorization": fabric_token.get("token")
             },
-            json={
-                 "timestamp": "{}".format(time.time()),
-                 "nonce_str": nonce_str,
-                 "method": method,
-                 "sign_type": sign_type,
-                 "sign": sign,
-                "version": version,
-                "biz_content": {
-                    "appid": self.merchant_id,
-                    "merch_code": self.short_code,
-                    "merch_order_id": merch_order_id
-                }
-            }, verify=False
+            json=payload,
+            verify=False
         )
+        print(response.text)
         return json.loads(response.content)
 
     @staticmethod
@@ -234,4 +243,3 @@ class TelebirrSuperApp:
                     flat_signa_data[key] = value
         string_b = utils.sign_sha256(flat_signa_data, private_key)
         return string_b
-
