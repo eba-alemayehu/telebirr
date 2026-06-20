@@ -1,4 +1,4 @@
-import datetime, json, requests, base64, hashlib, re, time, uuid
+import datetime, json, requests, base64, hashlib, re, time, uuid, urllib3
 from Crypto.PublicKey import RSA
 from Crypto.Cipher import PKCS1_v1_5
 
@@ -9,83 +9,150 @@ from cryptography.hazmat.primitives.serialization import load_der_public_key
 from cryptography.hazmat.primitives.asymmetric.padding import PKCS1v15
 
 from . import utils
+from . import utils as tools
+
+urllib3.disable_warnings()
+
+
+class ApplyFabricTokenService:
+    BASE_URL = None;
+    fabricAppId = None
+    appSecret = None
+    merchantAppId = None
+
+    def __init__(self, BASE_URL, fabricAppId, appSecret, merchantAppId):
+        self.BASE_URL = BASE_URL
+        self.fabricAppId = fabricAppId
+        self.appSecret = appSecret
+        self.merchantAppId = merchantAppId
+
+    def applyFabricToken(self):
+        headers = {
+            "Content-Type": "application/json",
+            "X-APP-Key": self.fabricAppId
+        }
+        payload = {
+            "appSecret": self.appSecret
+        }
+        data = json.dumps(payload)
+        authToken = requests.post(url=self.BASE_URL + "/payment/v1/token", headers=headers, data=data, verify=False)
+        return authToken.json()
 
 
 class Telebirr:
-    api = "http://196.188.120.3:10443/service-openup/toTradeWebPay"
+    req = None;
+    BASE_URL = None
+    fabricAppId = None
+    appSecret = None
+    merchantAppId = None
+    merchantCode = None
+    notify_path = None
 
-    def __init__(self, app_id, app_key, public_key, notify_url, receive_name, return_url, short_code, subject,
-                 timeout_express, total_amount, nonce, out_trade_no,
-                 api="http://196.188.120.3:10443/service-openup/toTradeWebPay"):
+    # def __init__(self, app_id, app_key, public_key, notify_url, receive_name, return_url, short_code, subject,
+    #              timeout_express, total_amount, nonce, out_trade_no,
+    #              api="http://196.188.120.3:10443/service-openup/toTradeWebPay"):
+    def __init__(self, req, BASE_URL, fabricAppId, appSecret, merchantAppId, merchantCode, private_key):
+        self.req = req
+        self.BASE_URL = BASE_URL
+        self.webBaseUrl = "https://developerportal.ethiotelebirr.et:38443/payment/web/paygate?"
+        self.fabricAppId = fabricAppId
+        self.appSecret = appSecret
+        self.merchantAppId = merchantAppId
+        self.merchantCode = merchantCode
+        self.notify_path = "http://www.google.com"
+        self.private_key = private_key
 
-        self.api = api
-        self.app_id = app_id
-        ussd = {
-            "appId": self.app_id,
-            "notifyUrl": notify_url,
-            "outTradeNo": out_trade_no,
-            "receiveName": receive_name,
-            "returnUrl": return_url,
-            "shortCode": short_code,
-            "subject": subject,
-            "timeoutExpress": timeout_express,
-            "totalAmount": total_amount, "nonce": nonce,
-            "timestamp": str(int(datetime.datetime.now().timestamp() * 1000))
+    # @Purpose: Creating Order
+    #  *
+    #  * @Param: no parameters it takes from the constructor
+    #  * @Return: rawRequest|String
+    def createOrder(self):
+        title = self.req["title"]
+        amount = self.req["amount"]
+        applyFabricTokenResult = ApplyFabricTokenService(self.BASE_URL, self.fabricAppId,
+                                                                                 self.appSecret, self.merchantAppId)
+        result = applyFabricTokenResult.applyFabricToken()
+        fabricToken = result["token"]
+        createOrderResult = self.requestCreateOrder(fabricToken, title, amount)
+        prepayId = createOrderResult["biz_content"]["prepay_id"]
+        rawRequest = self.createRawRequest(prepayId)
+        print("URL: ",  self.webBaseUrl + rawRequest + "&version=1.0&trade_type=Checkout")
+        rawRequest = self.webBaseUrl + rawRequest + "&version=1.0&trade_type=Checkout"
+        return rawRequest
+
+    #  * @Purpose: Requests CreateOrder
+    #  *
+    #  * @Param: fabricToken|String title|string amount|string
+    #  * @Return: String | Boolean
+    def requestCreateOrder(self, fabricToken, title, amount):
+        headers = {
+            "Content-Type": "application/json",
+            "X-APP-Key": self.fabricAppId,
+            "Authorization": fabricToken
         }
-        self.ussd = self.__encrypt_ussd(ussd=ussd, public_key=public_key)
-        self.sign = self.__sign(ussd=ussd, app_key=app_key)
+        # Body parameters
+        payload = self.createRequestObject(title, amount)
+        server_output = requests.post(url=self.BASE_URL + "/payment/v1/merchant/preOrder", headers=headers,
+                                      data=payload, verify=False)
+        print("Server output: ", server_output.content)
+        return server_output.json()
 
-    @staticmethod
-    def __encrypt_ussd(ussd, public_key):
-        public_key = re.sub("(.{64})", "\\1\n", public_key.replace("\n", ""), 0, re.DOTALL)
-        public_key = '-----BEGIN CERTIFICATE-----\n{}\n-----END CERTIFICATE-----'.format(public_key)
-        ussd_json = json.dumps(ussd)
-        encrypt = Telebirr.encrypt(public_key=public_key, msg=ussd_json)
-        return encrypt
-
-    @staticmethod
-    def encrypt(public_key, msg):
-        rsa = RSA.importKey(public_key)
-        cipher = PKCS1_v1_5.new(rsa)
-        ciphertext = b''
-        for i in range(0, len(msg) // 117):
-            ciphertext += cipher.encrypt(msg[i * 117:(i + 1) * 117].encode('utf8'))
-        ciphertext += cipher.encrypt(msg[(len(msg) // 117) * 117: len(msg)].encode('utf8'))
-        return base64.b64encode(ciphertext).decode('ascii')
-
-    @staticmethod
-    def __sign(ussd, app_key):
-        ussd_for_string_a = ussd.copy()
-        ussd_for_string_a["appKey"] = app_key
-        string_b = utils.sign_sha256(ussd_for_string_a)
-        return str(string_b).upper()
-
-    def request_params(self):
-        return {
-            "appid": self.app_id,
-            "sign": self.sign,
-            "ussd": self.ussd
+    #  * @Purpose: Creating Request Object
+    #  *
+    #  * @Param: title|String and amount|String
+    #  * @Return: Json encoded string
+    def createRequestObject(self, title, amount):
+        req = {
+            "nonce_str": tools.createNonceStr(),
+            "method": "payment.preorder",
+            "timestamp": tools.createTimeStamp(),
+            "version": "1.0",
+            "biz_content": {},
         }
+        biz = {
+            "notify_url": self.notify_path,
+            "appid": self.merchantAppId,
+            "merch_code": self.merchantCode,
+            "merch_order_id": tools.createMerchantOrderId(),
+            "trade_type": "Checkout",
+            "title": title,
+            "total_amount": amount,
+            "trans_currency": "ETB",
+            "timeout_express": "120m",
+            "business_type": "BuyGoods",
+            "payee_identifier": self.merchantCode,
+            "payee_identifier_type":"04",
+            "payee_type": "5000",
+            "redirect_url": "https://www.bing.com/",
+            "callback_info": "From web",
+        }
+        req["biz_content"] = biz
+        req["sign_type"] = "SHA256withRSA"
+        sign = tools.sign(req, privateKey=self.private_key)
+        req["sign"] = sign
+        print(json.dumps(req))
+        return json.dumps(req)
 
-    def send_request(self):
-        response = requests.post(url=self.api, json=self.request_params())
-        return json.loads(response.text)
-
-    @staticmethod
-    def decrypt(public_key, payload):
-        public_key = re.sub("(.{64})", "\\1\n", public_key.replace("\n", ""), 0, re.DOTALL)
-        public_key = '-----BEGIN PUBLIC KEY-----\n{}\n-----END PUBLIC KEY-----\n'.format(public_key)
-        b64data = '\n'.join(public_key.splitlines()[1:-1])
-        key = load_der_public_key(base64.b64decode(b64data), default_backend())
-
-        signature = base64.b64decode(payload)
-        decrypted = b''
-        for i in range(0, len(signature), 256):
-            partial = key.recover_data_from_signature(
-                signature[i:i + 256 if i + 256 < len(signature) else len(signature)], PKCS1v15(), None)
-            decrypted += partial
-
-        return json.loads(decrypted)
+    #  * @Purpose: Create a rawRequest string for H5 page to start pay
+    #  *
+    #  * @Param: prepayId returned from the createRequestObject
+    #  * @Return: rawRequest|string
+    def createRawRequest(self, prepayId):
+        maps = {
+            "appid": self.merchantAppId,
+            "merch_code": self.merchantCode,
+            "nonce_str": tools.createNonceStr(),
+            "prepay_id": prepayId,
+            "timestamp": tools.createTimeStamp(),
+            "sign_type": "SHA256WithRSA"
+        }
+        rawRequest = ""
+        for key in maps:
+            value = maps[key]
+            rawRequest = rawRequest + key + "=" + value + "&"
+        sign = tools.sign(maps, privateKey=self.private_key)
+        rawRequest = rawRequest + "sign=" + sign
+        return rawRequest
 
 
 class TelebirrSuperApp:
