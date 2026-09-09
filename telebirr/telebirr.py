@@ -67,7 +67,8 @@ class Telebirr:
     #  * @Param: all optional; title and amount fall back to the constructor's req,
     #  *         the rest override the otherwise static payload fields
     #  * @Return: rawRequest|String
-    def createOrder(self, title=None, amount=None, notify_url=None, redirect_url="https://www.bing.com/",
+    def createOrder(self, title=None, amount=None, nonce_str=None, notify_url=None,
+                    redirect_url="https://www.bing.com/",
                     trade_type="Checkout", trans_currency="ETB", timeout_express="120m",
                     business_type="BuyGoods", payee_identifier_type="04", payee_type="5000",
                     callback_info="From web", method="payment.preorder", version="1.0",
@@ -78,7 +79,8 @@ class Telebirr:
                                                                                  self.appSecret, self.merchantAppId)
         result = applyFabricTokenResult.applyFabricToken()
         fabricToken = result["token"]
-        createOrderResult = self.requestCreateOrder(fabricToken, title, amount, notify_url=notify_url,
+        createOrderResult = self.requestCreateOrder(fabricToken, title, amount, nonce_str=nonce_str,
+                                                    notify_url=notify_url,
                                                     redirect_url=redirect_url, trade_type=trade_type,
                                                     trans_currency=trans_currency, timeout_express=timeout_express,
                                                     business_type=business_type,
@@ -86,7 +88,7 @@ class Telebirr:
                                                     payee_type=payee_type, callback_info=callback_info,
                                                     method=method, version=version, sign_type=sign_type)
         prepayId = createOrderResult["biz_content"]["prepay_id"]
-        rawRequest = self.createRawRequest(prepayId)
+        rawRequest = self.createRawRequest(prepayId, nonce_str=nonce_str)
         rawRequest = self.webBaseUrl + rawRequest + "&version=" + version + "&trade_type=" + trade_type
         print("URL: ", rawRequest)
         return rawRequest
@@ -114,13 +116,14 @@ class Telebirr:
     #  * @Param: title|String and amount|String, plus optional overrides for the
     #  *         otherwise static payload fields
     #  * @Return: Json encoded string
-    def createRequestObject(self, title, amount, notify_url=None, redirect_url="https://www.bing.com/",
+    def createRequestObject(self, title, amount, nonce_str=None, notify_url=None,
+                            redirect_url="https://www.bing.com/",
                             trade_type="Checkout", trans_currency="ETB", timeout_express="120m",
                             business_type="BuyGoods", payee_identifier_type="04", payee_type="5000",
                             callback_info="From web", method="payment.preorder", version="1.0",
                             sign_type="SHA256withRSA"):
         req = {
-            "nonce_str": tools.createNonceStr(),
+            "nonce_str": nonce_str if nonce_str is not None else tools.createNonceStr(),
             "method": method,
             "timestamp": tools.createTimeStamp(),
             "version": version,
@@ -154,11 +157,11 @@ class Telebirr:
     #  *
     #  * @Param: prepayId returned from the createRequestObject
     #  * @Return: rawRequest|string
-    def createRawRequest(self, prepayId):
+    def createRawRequest(self, prepayId, nonce_str=None):
         maps = {
             "appid": self.merchantAppId,
             "merch_code": self.merchantCode,
-            "nonce_str": tools.createNonceStr(),
+            "nonce_str": nonce_str if nonce_str is not None else tools.createNonceStr(),
             "prepay_id": prepayId,
             "timestamp": tools.createTimeStamp(),
             "sign_type": "SHA256WithRSA"
