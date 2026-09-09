@@ -47,11 +47,12 @@ class Telebirr:
     merchantAppId = None
     merchantCode = None
     notify_path = None
+    redirect_url = None
 
     # def __init__(self, app_id, app_key, public_key, notify_url, receive_name, return_url, short_code, subject,
     #              timeout_express, total_amount, nonce, out_trade_no,
     #              api="http://196.188.120.3:10443/service-openup/toTradeWebPay"):
-    def __init__(self, req, BASE_URL, fabricAppId, appSecret, merchantAppId, merchantCode, private_key):
+    def __init__(self, req, BASE_URL, fabricAppId, appSecret, merchantAppId, merchantCode, private_key, redirect_url):
         self.req = req
         self.BASE_URL = BASE_URL
         self.webBaseUrl = "https://developerportal.ethiotelebirr.et:38443/payment/web/paygate?"
@@ -61,6 +62,7 @@ class Telebirr:
         self.merchantCode = merchantCode
         self.notify_path = "http://www.google.com"
         self.private_key = private_key
+        self.redirect_url = redirect_url
 
     # @Purpose: Creating Order
     #  *
@@ -99,35 +101,40 @@ class Telebirr:
 
     #  * @Purpose: Creating Request Object
     #  *
-    #  * @Param: title|String and amount|String
+    #  * @Param: title|String and amount|String, plus optional overrides for the
+    #  *         otherwise static payload fields
     #  * @Return: Json encoded string
-    def createRequestObject(self, title, amount):
+    def createRequestObject(self, title, amount, notify_url=None, redirect_url="https://www.bing.com/",
+                            trade_type="Checkout", trans_currency="ETB", timeout_express="120m",
+                            business_type="BuyGoods", payee_identifier_type="04", payee_type="5000",
+                            callback_info="From web", method="payment.preorder", version="1.0",
+                            sign_type="SHA256withRSA"):
         req = {
             "nonce_str": tools.createNonceStr(),
-            "method": "payment.preorder",
+            "method": method,
             "timestamp": tools.createTimeStamp(),
-            "version": "1.0",
+            "version": version,
             "biz_content": {},
         }
         biz = {
-            "notify_url": self.notify_path,
+            "notify_url": notify_url if notify_url is not None else self.notify_path,
             "appid": self.merchantAppId,
             "merch_code": self.merchantCode,
             "merch_order_id": tools.createMerchantOrderId(),
-            "trade_type": "Checkout",
+            "trade_type": trade_type,
             "title": title,
             "total_amount": amount,
-            "trans_currency": "ETB",
-            "timeout_express": "120m",
-            "business_type": "BuyGoods",
+            "trans_currency": trans_currency,
+            "timeout_express": timeout_express,
+            "business_type": business_type,
             "payee_identifier": self.merchantCode,
-            "payee_identifier_type":"04",
-            "payee_type": "5000",
-            "redirect_url": "https://www.bing.com/",
-            "callback_info": "From web",
+            "payee_identifier_type": payee_identifier_type,
+            "payee_type": payee_type,
+            "redirect_url": redirect_url,
+            "callback_info": callback_info,
         }
         req["biz_content"] = biz
-        req["sign_type"] = "SHA256withRSA"
+        req["sign_type"] = sign_type
         sign = tools.sign(req, privateKey=self.private_key)
         req["sign"] = sign
         print(json.dumps(req))
