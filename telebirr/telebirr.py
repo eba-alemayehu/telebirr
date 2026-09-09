@@ -47,12 +47,11 @@ class Telebirr:
     merchantAppId = None
     merchantCode = None
     notify_path = None
-    redirect_url = None
 
     # def __init__(self, app_id, app_key, public_key, notify_url, receive_name, return_url, short_code, subject,
     #              timeout_express, total_amount, nonce, out_trade_no,
     #              api="http://196.188.120.3:10443/service-openup/toTradeWebPay"):
-    def __init__(self, req, BASE_URL, fabricAppId, appSecret, merchantAppId, merchantCode, private_key, redirect_url):
+    def __init__(self, req, BASE_URL, fabricAppId, appSecret, merchantAppId, merchantCode, private_key):
         self.req = req
         self.BASE_URL = BASE_URL
         self.webBaseUrl = "https://developerportal.ethiotelebirr.et:38443/payment/web/paygate?"
@@ -62,7 +61,6 @@ class Telebirr:
         self.merchantCode = merchantCode
         self.notify_path = "http://www.google.com"
         self.private_key = private_key
-        self.redirect_url = redirect_url
 
     # @Purpose: Creating Order
     #  *
