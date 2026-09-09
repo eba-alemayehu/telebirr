@@ -64,34 +64,46 @@ class Telebirr:
 
     # @Purpose: Creating Order
     #  *
-    #  * @Param: no parameters it takes from the constructor
+    #  * @Param: all optional; title and amount fall back to the constructor's req,
+    #  *         the rest override the otherwise static payload fields
     #  * @Return: rawRequest|String
-    def createOrder(self):
-        title = self.req["title"]
-        amount = self.req["amount"]
+    def createOrder(self, title=None, amount=None, notify_url=None, redirect_url="https://www.bing.com/",
+                    trade_type="Checkout", trans_currency="ETB", timeout_express="120m",
+                    business_type="BuyGoods", payee_identifier_type="04", payee_type="5000",
+                    callback_info="From web", method="payment.preorder", version="1.0",
+                    sign_type="SHA256withRSA"):
+        title = title if title is not None else self.req["title"]
+        amount = amount if amount is not None else self.req["amount"]
         applyFabricTokenResult = ApplyFabricTokenService(self.BASE_URL, self.fabricAppId,
                                                                                  self.appSecret, self.merchantAppId)
         result = applyFabricTokenResult.applyFabricToken()
         fabricToken = result["token"]
-        createOrderResult = self.requestCreateOrder(fabricToken, title, amount)
+        createOrderResult = self.requestCreateOrder(fabricToken, title, amount, notify_url=notify_url,
+                                                    redirect_url=redirect_url, trade_type=trade_type,
+                                                    trans_currency=trans_currency, timeout_express=timeout_express,
+                                                    business_type=business_type,
+                                                    payee_identifier_type=payee_identifier_type,
+                                                    payee_type=payee_type, callback_info=callback_info,
+                                                    method=method, version=version, sign_type=sign_type)
         prepayId = createOrderResult["biz_content"]["prepay_id"]
         rawRequest = self.createRawRequest(prepayId)
-        print("URL: ",  self.webBaseUrl + rawRequest + "&version=1.0&trade_type=Checkout")
-        rawRequest = self.webBaseUrl + rawRequest + "&version=1.0&trade_type=Checkout"
+        rawRequest = self.webBaseUrl + rawRequest + "&version=" + version + "&trade_type=" + trade_type
+        print("URL: ", rawRequest)
         return rawRequest
 
     #  * @Purpose: Requests CreateOrder
     #  *
-    #  * @Param: fabricToken|String title|string amount|string
+    #  * @Param: fabricToken|String title|string amount|string, plus optional
+    #  *         overrides forwarded to createRequestObject
     #  * @Return: String | Boolean
-    def requestCreateOrder(self, fabricToken, title, amount):
+    def requestCreateOrder(self, fabricToken, title, amount, **payload_params):
         headers = {
             "Content-Type": "application/json",
             "X-APP-Key": self.fabricAppId,
             "Authorization": fabricToken
         }
         # Body parameters
-        payload = self.createRequestObject(title, amount)
+        payload = self.createRequestObject(title, amount, **payload_params)
         server_output = requests.post(url=self.BASE_URL + "/payment/v1/merchant/preOrder", headers=headers,
                                       data=payload, verify=False)
         print("Server output: ", server_output.content)
