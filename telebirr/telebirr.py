@@ -67,7 +67,7 @@ class Telebirr:
     #  * @Param: all optional; title and amount fall back to the constructor's req,
     #  *         the rest override the otherwise static payload fields
     #  * @Return: rawRequest|String
-    def createOrder(self, title=None, amount=None, nonce_str=None, notify_url=None,
+    def createOrder(self, title=None, amount=None, nonce_str=None, merch_order_id=None, notify_url=None,
                     redirect_url="https://www.bing.com/",
                     trade_type="Checkout", trans_currency="ETB", timeout_express="120m",
                     business_type="BuyGoods", payee_identifier_type="04", payee_type="5000",
@@ -80,7 +80,7 @@ class Telebirr:
         result = applyFabricTokenResult.applyFabricToken()
         fabricToken = result["token"]
         createOrderResult = self.requestCreateOrder(fabricToken, title, amount, nonce_str=nonce_str,
-                                                    notify_url=notify_url,
+                                                    merch_order_id=merch_order_id, notify_url=notify_url,
                                                     redirect_url=redirect_url, trade_type=trade_type,
                                                     trans_currency=trans_currency, timeout_express=timeout_express,
                                                     business_type=business_type,
@@ -116,7 +116,7 @@ class Telebirr:
     #  * @Param: title|String and amount|String, plus optional overrides for the
     #  *         otherwise static payload fields
     #  * @Return: Json encoded string
-    def createRequestObject(self, title, amount, nonce_str=None, notify_url=None,
+    def createRequestObject(self, title, amount, nonce_str=None, merch_order_id=None, notify_url=None,
                             redirect_url="https://www.bing.com/",
                             trade_type="Checkout", trans_currency="ETB", timeout_express="120m",
                             business_type="BuyGoods", payee_identifier_type="04", payee_type="5000",
@@ -133,7 +133,7 @@ class Telebirr:
             "notify_url": notify_url if notify_url is not None else self.notify_path,
             "appid": self.merchantAppId,
             "merch_code": self.merchantCode,
-            "merch_order_id": tools.createMerchantOrderId(),
+            "merch_order_id": merch_order_id if merch_order_id is not None else tools.createMerchantOrderId(),
             "trade_type": trade_type,
             "title": title,
             "total_amount": amount,
